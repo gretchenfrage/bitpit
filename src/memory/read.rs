@@ -5,51 +5,39 @@ use super::twiddling::*;
 pub fn search_bit(root: &Node, address: i128) -> Option<bool> {
     let mut curr: &Node = root;
     loop {
-        let next: &Node = match curr {
-            &Node::Page {
-                index: curr_index,
-                bits: ref bitfield,
-            } => {
-                let UnpackedIndex {
-                    quo: page_index,
-                    rem: word_index,
-                    bit: bit_index,
-                } = UnpackedIndex::from_address_height(address, 0);
+        if curr.row_index() == curr.row_index_of_address(address) {
+            match root {
 
-                if curr_index == page_index {
-                    return Some(
-                        get_word_bit(bitfield[word_index], bit_index)
-                    );
-                } else {
-                    return None;
-                }
-            },
+                &Node::Page {
+                    ref bits,
+                    ..
+                } => {
+                    let word_index = child_index(address, WordLevel);
+                    let bit_index = child_index(address, BitLevel) as u8;
 
-            &Node::Branch {
-                height: curr_height,
-                index: curr_index,
-                ref children,
-            } => {
-                debug_assert!(curr_height > 0);
+                    let word = bits[word_index];
+                    let bit = get_word_bit(word, bit_index);
 
-                let UnpackedIndex {
-                    quo: branch_index,
-                    rem: child_index,
-                    bit: _,
-                } = UnpackedIndex::from_address_height(address, curr_height);
+                    return Some(bit);
+                },
 
-                if curr_index == branch_index {
-                    if let &Some(ref child) = &children[child_index] {
-                        Box::as_ref(child)
+                &Node::Branch {
+                    level,
+                    row_index,
+                    ref children,
+                } => {
+                    let i = child_index(address, ChildOfBranchLevel(level));
+
+                    if let &Some(ref node) = &children[i] {
+                        curr = Box::as_ref(node);
                     } else {
                         return None;
                     }
-                } else {
-                    return None;
-                }
-            },
-        };
+                },
 
-        curr = next;
+            }
+        } else {
+            return None;
+        }
     }
 }
