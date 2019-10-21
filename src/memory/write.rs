@@ -59,7 +59,6 @@ pub fn insert_bit(root: &mut Box<Node>, address: i128, bit: bool) {
 
 fn ascend(node: &mut Box<Node>, address: i128) {
     if node.row_index() != node.row_index_of_address(address) {
-
         const FACTOR: i128 = BRANCH_FACTOR as i128;
 
         let mut level: BranchLevel = node.parent_level();

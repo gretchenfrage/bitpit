@@ -64,6 +64,23 @@ impl Node {
             &Node::Branch { level: BranchLevel(l), .. } => BranchLevel(l + 1),
         }
     }
+
+    pub fn layers(&self) -> usize {
+        match self {
+            &Node::Page { .. } => 1,
+            &Node::Branch {
+                ref children,
+                ..
+            } => {
+                (&children[..]).iter()
+                    .filter_map(Option::as_ref)
+                    .map(Box::as_ref)
+                    .map(|node| node.layers())
+                    .max()
+                    .unwrap_or(0) + 1
+            }
+        }
+    }
 }
 
 pub trait TreeLevel {
