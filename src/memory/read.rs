@@ -19,7 +19,7 @@ pub fn search_bit(root: &Node, address: i128) -> Option<bool> {
                     let bit = get_word_bit(word, bit_index);
 
                     return Some(bit);
-                },
+                }
 
                 &Node::Branch {
                     level,
@@ -33,7 +33,7 @@ pub fn search_bit(root: &Node, address: i128) -> Option<bool> {
                     } else {
                         return None;
                     }
-                },
+                }
 
             }
         } else {

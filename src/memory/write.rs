@@ -11,7 +11,49 @@ pub fn insert_bit(root: &mut Box<Node>, address: i128, bit: bool) {
         ascend(curr, address);
 
         // descend
-        
+        let descend_to: usize = match Box::as_mut(curr) {
+
+            &mut Node::Page {
+                ref mut bits,
+                row_index: page_row_index,
+            } => {
+                debug_assert_eq!(page_row_index, row_index(address, PageLevel));
+
+                let word_index = child_index(address, WordLevel);
+                let bit_index = child_index(address, BitLevel) as u8;
+
+                let word: &mut u8 = &mut bits[word_index];
+                set_word_bit(word, bit_index, bit);
+
+                return;
+            }
+
+            &mut Node::Branch {
+                level,
+                children: _,
+                row_index: branch_row_index,
+            } => {
+                debug_assert_eq!(branch_row_index, row_index(address, level));
+
+                child_index(address, ChildOfBranchLevel(level))
+            }
+
+        };
+
+        // descend part #2 (because lifetime limitations)
+        if let &mut Node::Branch {
+            ref mut children,
+            ..
+        } = Box::as_mut(curr) {
+
+            curr = children[descend_to]
+                .get_or_insert_with(|| {
+                    Box::new(Node::page_containing_address(address))
+                });
+
+        } else {
+            unreachable!()
+        }
     }
 }
 
