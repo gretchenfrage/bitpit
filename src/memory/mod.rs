@@ -11,9 +11,7 @@ pub(self) mod twiddling;
 
 mod read;
 
-/*
 mod write;
-*/
 
 #[derive(Clone)]
 pub struct Memory {

@@ -60,6 +60,13 @@ impl Node {
             &Node::Branch { level, .. } => row_index(address, level),
         }
     }
+
+    pub fn parent_level(&self) -> BranchLevel {
+        match self {
+            &Node::Page { .. } => BranchLevel(0),
+            &Node::Branch { level: BranchLevel(l), .. } => BranchLevel(l + 1),
+        }
+    }
 }
 
 pub trait TreeLevel {
