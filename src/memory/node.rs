@@ -4,11 +4,8 @@ use std::mem::{size_of, transmute, self};
 use std::ptr;
 use super::twiddling::*;
 
-//pub const PAGE_SIZE: usize = 0x400;
-//pub const BRANCH_FACTOR: usize = PAGE_SIZE / size_of::<usize>();
-
-pub const PAGE_SIZE: usize = 2;
-pub const BRANCH_FACTOR: usize = 2;
+pub const PAGE_SIZE: usize = 0x400;
+pub const BRANCH_FACTOR: usize = PAGE_SIZE / size_of::<usize>();
 
 #[derive(Clone)]
 pub enum Node {

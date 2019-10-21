@@ -26,13 +26,13 @@ impl Memory {
     }
 
     pub fn get_bit(&self, address: i128) -> bool {
-        //read::search_bit(self.root.as_ref(), address)
-        //    .unwrap_or(false)
-        unimplemented!()
+        read::search_bit(self.root.as_ref(), address)
+            .unwrap_or(false)
+        //unimplemented!()
     }
 
     pub fn set_bit(&mut self, address: i128, bit: bool) {
-        //write::insert_bit(&mut self.root, address, bit);
-        unimplemented!()
+        write::insert_bit(&mut self.root, address, bit);
+        //unimplemented!()
     }
 }

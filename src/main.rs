@@ -13,13 +13,17 @@ fn main() {
         }
     }
 
-    for i in 0..1000000 {
+    for i in 0..100000 {
         if i % 2 == 0 {
-            println!("insert {}", i);
+            //println!("insert {}", i);
             mem.set_bit(i, true);
         }
 
         assert_eq!(mem.get_bit(i), i % 2 == 0);
+
+        if i % 1000 == 0 {
+            println!("inserted {}", i);
+        }
     }
 
     println!("none");

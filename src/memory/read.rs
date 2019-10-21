@@ -5,8 +5,9 @@ use super::twiddling::*;
 pub fn search_bit(root: &Node, address: i128) -> Option<bool> {
     let mut curr: &Node = root;
     loop {
+
         if curr.row_index() == curr.row_index_of_address(address) {
-            match root {
+            match curr {
 
                 &Node::Page {
                     ref bits,
@@ -39,5 +40,6 @@ pub fn search_bit(root: &Node, address: i128) -> Option<bool> {
         } else {
             return None;
         }
+
     }
 }
