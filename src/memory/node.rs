@@ -1,6 +1,6 @@
 
 use std::{i128, usize};
-use std::mem::{size_of, transmute, self};
+use std::mem::{size_of, transmute};
 use std::ptr;
 use super::twiddling::*;
 

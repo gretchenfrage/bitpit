@@ -1,7 +1,5 @@
 
 use std::{i128, usize};
-use std::mem::{size_of, self};
-use std::ops;
 
 use self::node::Node;
 

@@ -2,8 +2,8 @@
 #[macro_use]
 extern crate nom;
 
-mod memory;
-mod code;
+pub mod memory;
+pub mod code;
 
 use code::tokens::Token;
 

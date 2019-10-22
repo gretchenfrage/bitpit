@@ -24,7 +24,7 @@ pub fn search_bit(root: &Node, address: i128) -> Option<bool> {
 
                 &Node::Branch {
                     level,
-                    row_index,
+                    row_index: _,
                     ref children,
                 } => {
                     let i = child_index(address, ChildOfBranchLevel(level));

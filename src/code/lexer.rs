@@ -3,9 +3,8 @@ use super::tokens::*;
 
 use std::char;
 
+use nom::IResult;
 use nom::error::{VerboseError, ParseError, convert_error};
-use nom::{IResult, InputLength};
-use nom::character::complete::hex_digit1;
 use nom::character::complete::anychar;
 
 macro_rules! named_any_err {
@@ -133,7 +132,7 @@ fn whitespace<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
             ' ' | '\n' | '\t' => {
                 split_index = Some(index);
             },
-            c => {
+            _c => {
                 break;
             }
         };
@@ -212,7 +211,7 @@ pub fn lex<'a, E>(code: &'a str) -> Result<Vec<Token>, E>
         .map_err(|nom_error| match nom_error {
             nom::Err::Error(e) => e,
             nom::Err::Failure(e) => e,
-            nom::Err::Incomplete(e) => unreachable!(),
+            nom::Err::Incomplete(_e) => unreachable!(),
         })
         .and_then(|(rem, vec)| {
             if rem.is_empty() {
