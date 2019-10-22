@@ -155,31 +155,30 @@ fn comment<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
     where
         E: ParseError<&'a str>, {
 
+    let (mut remaining, _) = tag!(input, "((")?;
+
     named_any_err!(
-        layer(&str) -> i32,
-        preceded!(
-            tag!("(("),
+        iteration(&str) -> i32,
+        complete!(
             map!(
                 many_till!(
                     anychar,
                     alt!(
-                        map!(complete!(tag!("))")), |_| -1_i32) |
-                        map!(peek!(complete!(tag!("(("))), |_| 1_i32)
+                        map!(tag!("))"), |_| -1) |
+                        map!(tag!("(("), |_| 1)
                     )
                 ),
                 |(_, delta)| delta
             )
-
         )
     );
 
-    let (mut remaining, delta) = layer(input).map_err(nom::Err::convert)?;
-
-    let mut depth: i32 = 1 + delta;
+    let mut depth: i32 = 1;
     while depth > 0 {
-        let (remaining2, delta) = layer(remaining).map_err(nom::Err::convert)?;
-        depth += delta;
+        let (remaining2, delta) = iteration(remaining).map_err(nom::Err::convert)?;
+
         remaining = remaining2;
+        depth += delta;
     }
 
     Ok((remaining, ()))
