@@ -3,12 +3,27 @@ use super::tokens::*;
 
 use std::char;
 
-use nom::error::{VerboseError, ParseError};
+use nom::error::{VerboseError, ParseError, convert_error};
 use nom::{IResult, InputLength};
 use nom::character::complete::hex_digit1;
 use nom::character::complete::anychar;
 
-named!(
+macro_rules! named_any_err {
+    (
+        $name:ident(&str) -> $output:ty,
+        $submac:ident!( $($args:tt)* )
+    ) => {
+        fn $name<'a, E>(input: &'a str) -> IResult<&'a str, $output, E>
+            where
+                E: ParseError<&'a str> {
+
+            $submac!(input, $($args)*)
+
+        }
+    };
+}
+
+named_any_err!(
     operator(&str) -> Operator,
     map!(
         one_of!("&|^~=_"),
@@ -24,7 +39,7 @@ named!(
     )
 );
 
-named!(
+named_any_err!(
     bit_literal(&str) -> BitLiteral,
     map!(
         one_of!("yn"),
@@ -36,7 +51,7 @@ named!(
     )
 );
 
-named!(
+named_any_err!(
     io_literal(&str) -> IoLiteral,
     map!(
         one_of!("IO"),
@@ -63,7 +78,7 @@ fn hex_str_to_u128(string: &str) -> u128 {
     accum
 }
 
-named!(
+named_any_err!(
     hex_u128(&str) -> u128,
     map!(
         nom::character::complete::hex_digit1,
@@ -71,7 +86,7 @@ named!(
     )
 );
 
-named!(
+named_any_err!(
     memory_read(&str) -> MemoryRead,
     switch!(
         one_of!("*><"),
@@ -87,7 +102,7 @@ named!(
     )
 );
 
-named!(
+named_any_err!(
     parenthesis(&str) -> Parenthesis,
     map!(
         one_of!("()"),
@@ -99,7 +114,7 @@ named!(
     )
 );
 
-named!(
+named_any_err!(
     colon(&str) -> (),
     map!(
         char!(':'),
@@ -107,20 +122,41 @@ named!(
     )
 );
 
-named!(
-    whitespace(&str) -> (),
-    map!(
-        eat_separator!(" \t\n"),
-        |_| ()
-    )
-);
+fn whitespace<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
+    where
+        E: ParseError<&'a str>, {
+
+    let mut split_index = None;
+
+    for (index, c) in input.char_indices() {
+        match c {
+            ' ' | '\n' | '\t' => {
+                split_index = Some(index);
+            },
+            c => {
+                break;
+            }
+        };
+    }
+
+    match split_index {
+        None => {
+            Err(nom::Err::Error(
+                E::from_error_kind(input, nom::error::ErrorKind::Many0)
+            ))
+        },
+        Some(index) => {
+            let (_, rest) = input.split_at(index + 1);
+            Ok((rest, ()))
+        }
+    }
+}
 
 fn comment<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
     where
-        E: ParseError<&'a str>,
-        E: From<(&'a str, nom::error::ErrorKind)>, {
+        E: ParseError<&'a str>, {
 
-    named!(
+    named_any_err!(
         layer(&str) -> i32,
         preceded!(
             tag!("(("),
@@ -128,8 +164,8 @@ fn comment<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
                 many_till!(
                     anychar,
                     alt!(
-                        map!(tag!("))"), |_| -1_i32) |
-                        map!(peek!(tag!("((")), |_| 1_i32)
+                        map!(complete!(tag!("))")), |_| -1_i32) |
+                        map!(peek!(complete!(tag!("(("))), |_| 1_i32)
                     )
                 ),
                 |(_, delta)| delta
@@ -140,7 +176,7 @@ fn comment<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
 
     let (mut remaining, delta) = layer(input).map_err(nom::Err::convert)?;
 
-    let mut depth: i32 = 1 - delta;
+    let mut depth: i32 = 1 + delta;
     while depth > 0 {
         let (remaining2, delta) = layer(remaining).map_err(nom::Err::convert)?;
         depth += delta;
@@ -150,52 +186,46 @@ fn comment<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
     Ok((remaining, ()))
 }
 
-named!(
+named_any_err!(
     token(&str) -> Token,
     alt!(
-        map!(operator, Token::Operator) |
-        map!(bit_literal, Token::BitLiteral) |
-        map!(io_literal, Token::IoLiteral) |
-        map!(memory_read, Token::MemoryRead) |
-        map!(parenthesis, Token::Parenthesis) |
-        map!(hex_u128, |n| Token::ActivationPattern(ActivationPattern(n))) |
-        map!(colon, |_| Token::Colon) |
-        map!(whitespace, |_| Token::Whitespace) |
-        map!(comment, |_| Token::Comment)
-    )
-);
+        // good for comment to be first
+        complete!( map!(comment, |_| Token::Comment) ) |
 
-named!(
-    tokens_complete(&str) -> Vec<Token>,
-    complete!(
-        terminated!(
-            many0!(
-                token
-            ),
-            eof!()
-        )
+        complete!( map!(operator, Token::Operator) ) |
+        complete!( map!(bit_literal, Token::BitLiteral) ) |
+        complete!( map!(io_literal, Token::IoLiteral) ) |
+        complete!( map!(memory_read, Token::MemoryRead) ) |
+        complete!( map!(parenthesis, Token::Parenthesis) ) |
+        complete!( map!(hex_u128, |n| Token::ActivationPattern(ActivationPattern(n))) ) |
+        complete!( map!(colon, |_| Token::Colon) ) |
+        complete!( map!(whitespace, |_| Token::Whitespace) )
     )
 );
 
 pub fn lex<'a, E>(code: &'a str) -> Result<Vec<Token>, E>
     where
-        E: ParseError<&'a str>,
-        E: From<(&'a str, nom::error::ErrorKind)>, {
+        E: ParseError<&'a str>, {
 
-    tokens_complete(code)
-        .map(|(rem, vec)| {
-            assert!(rem.is_empty());
-            vec
-        })
+    many0!(code, complete!(token))
         .map_err(nom::Err::convert)
         .map_err(|nom_error| match nom_error {
             nom::Err::Error(e) => e,
             nom::Err::Failure(e) => e,
-            nom::Err::Incomplete(_) => unreachable!(),
+            nom::Err::Incomplete(e) => unreachable!(),
+        })
+        .and_then(|(rem, vec)| {
+            if rem.is_empty() {
+                Ok(vec)
+            } else {
+                println!("rem = {:#?}", rem);
+                Err(E::from_error_kind(rem, nom::error::ErrorKind::Alt))
+            }
         })
 
 }
 
-pub fn lex_verbose_err(code: &str) -> Result<Vec<Token>, (&str, nom::error::ErrorKind)> {
-    lex(code)
+pub fn lex_verbose_err(code: &str) -> Result<Vec<Token>, String> {
+    lex::<VerboseError<_>>(code)
+        .map_err(|e| convert_error(code, e))
 }
