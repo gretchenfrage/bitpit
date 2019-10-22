@@ -158,6 +158,7 @@ named!(
         map!(io_literal, Token::IoLiteral) |
         map!(memory_read, Token::MemoryRead) |
         map!(parenthesis, Token::Parenthesis) |
+        map!(hex_u128, |n| Token::ActivationPattern(ActivationPattern(n))) |
         map!(colon, |_| Token::Colon) |
         map!(whitespace, |_| Token::Whitespace) |
         map!(comment, |_| Token::Comment)
@@ -193,4 +194,8 @@ pub fn lex<'a, E>(code: &'a str) -> Result<Vec<Token>, E>
             nom::Err::Incomplete(_) => unreachable!(),
         })
 
+}
+
+pub fn lex_verbose_err(code: &str) -> Result<Vec<Token>, (&str, nom::error::ErrorKind)> {
+    lex(code)
 }

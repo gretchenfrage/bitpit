@@ -31,7 +31,7 @@ pub enum Parenthesis {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct ActivationPattern(pub i128);
+pub struct ActivationPattern(pub u128);
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum Token {
