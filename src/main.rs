@@ -1,8 +1,9 @@
 
+#[macro_use]
+extern crate nom;
+
 mod memory;
 mod code;
-
-use memory::Memory;
 
 fn main() {
 }
