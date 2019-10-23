@@ -2,7 +2,7 @@
 use std::borrow::{Borrow, BorrowMut};
 use std::ops::Index;
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct IoTruthTable<T>(pub T);
 
 // input is outer array.
@@ -59,6 +59,31 @@ impl IoTruthTable<u8> {
     }
 }
 
+impl<T: Borrow<u8>> IoTruthTable<T> {
+    pub fn bitwise_lookup(&self, input: bool, output: bool) -> bool {
+        let shift: u8 = output as u8 + (input as u8 * 2);
+        let mask: u8 = 0x1 << shift;
+
+        // before comparing with 0x00, we mask out the higher order 4 bits
+        // because we only care about the lower order 4 bits
+        // the higher ones are allowed to be whatever
+        ((self.0.borrow() & mask) & 0x0F) != 0x00
+    }
+
+    pub fn unpack(&self) -> IoTruthTable<TruthTableArray> {
+        IoTruthTable([
+            [
+                self.bitwise_lookup(false, false),
+                self.bitwise_lookup(false, true)
+            ],
+            [
+                self.bitwise_lookup(true, false),
+                self.bitwise_lookup(true, true)
+            ],
+        ])
+    }
+}
+
 impl<T: BorrowMut<u8>> IoTruthTable<T> {
     pub fn bitwise_zero(&mut self) {
         *self.0.borrow_mut() = 0;
@@ -80,62 +105,49 @@ impl<T: BorrowMut<u8>> IoTruthTable<T> {
             }
         }
     }
-}
 
-/*
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct InputOutputValues(pub bool, pub bool);
-
-impl InputOutputValues {
-    pub fn input(&self) -> bool {
-        self.0
-    }
-
-    pub fn output(&self) -> bool {
-        self.1
+    pub fn repack_from(&mut self, table: &IoTruthTable<TruthTableArray>) {
+        self.bitwise_zero();
+        self.bitwise_imprint(table);
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct InputOutputTableUnpacked {
-    input_no_output_no: bool,
-    input_yes_output_no: bool,
-    input_no_output_yes: bool,
-    input_yes_output_yes: bool,
+// pretty-printing implementation
+
+use std::fmt::{self, Debug, Formatter};
+
+fn pretty_format_io_function(table: &TruthTableArray) -> String {
+    format!(
+        "(i,o)={{ (f,f):{} (t,f):{} (f,t):{} (t,t):{} }}",
+        table[0][0],
+        table[1][0],
+        table[0][1],
+        table[1][1],
+    )
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct InputOutputTableBits<B>(pub B);
-
-impl InputOutputTableBits<u8> {
-    pub fn unconditional_no() -> Self {
-        InputOutputTableBits(0x00)
-    }
-
-    pub fn unconditional_yes() -> Self {
-        InputOutputTableBits(0x0F)
-    }
-
-    pub fn yes_when_input_yes() -> Self {
-        let mut field = Self::unconditional_no();
-
+impl Debug for IoTruthTable<TruthTableArray> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(&format!(
+            "IoTruthTable({})",
+            pretty_format_io_function(&self.0),
+        ))
     }
 }
 
-impl<B: Borrow<u8>> InputOutputTableBits<B> {
-
-}
-
-impl<B: BorrowMut<u8>> InputOutputTableBits<B> {
-
-}
-
-pub fn input_output_bit_offset(input: bool, output: bool) -> usize {
-    match (input, output) {
-        (false, false) => 0,
-        (true, false) => 1,
-        (false, true) => 2,
-        (true, true) => 3,
+macro_rules! impl_truth_table_bitfield_debug {
+    ($t:ty) => {
+        impl Debug for IoTruthTable<$t> {
+            fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+                f.debug_struct("IoTruthTable")
+                    .field("bitfield", &format!("{:#010b}", *Borrow::<u8>::borrow(&self.0)))
+                    .field("unpacked", &self.unpack())
+                    .finish()
+            }
+        }
     }
 }
-*/
+
+impl_truth_table_bitfield_debug!(u8);
+impl_truth_table_bitfield_debug!(&u8);
+impl_truth_table_bitfield_debug!(&mut u8);
