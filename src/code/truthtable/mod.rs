@@ -110,9 +110,86 @@ impl<T: BorrowMut<u8>> IoTruthTable<T> {
         self.bitwise_zero();
         self.bitwise_imprint(table);
     }
+
+    pub fn copy_from<O>(&mut self, source: IoTruthTable<O>)
+        where
+            O: Borrow<u8> {
+
+        let target: &mut u8 = self.0.borrow_mut();
+        let source: &u8 = source.0.borrow();
+
+        *target = *source;
+    }
 }
 
-// pretty-printing implementation
+// bitwise operations on bit fields
+
+use std::ops::{
+    BitAnd, BitOr, BitXor,
+    BitAndAssign, BitOrAssign, BitXorAssign,
+    Not,
+};
+
+macro_rules! impl_bitfield_op {
+    ($op:tt::$method:tt) => {
+        impl<A, B> $op<IoTruthTable<B>> for IoTruthTable<A>
+            where
+                A: Borrow<u8>,
+                B: Borrow<u8>, {
+
+            type Output = IoTruthTable<u8>;
+
+            fn $method(self, rhs: IoTruthTable<B>) -> Self::Output {
+                let ref_a: &u8 = self.0.borrow();
+                let ref_b: &u8 = rhs.0.borrow();
+
+                IoTruthTable($op::$method(
+                    *ref_a,
+                    *ref_b,
+                ))
+            }
+        }
+    }
+}
+
+impl_bitfield_op!(BitAnd::bitand);
+impl_bitfield_op!(BitOr::bitor);
+impl_bitfield_op!(BitXor::bitxor);
+
+macro_rules! impl_bitfield_op_assign {
+    ($op:tt::$method:tt) => {
+        impl<A, B> $op<IoTruthTable<B>> for IoTruthTable<A>
+            where
+                A: BorrowMut<u8>,
+                B: Borrow<u8>, {
+
+            fn $method(&mut self, rhs: IoTruthTable<B>) {
+                let ref_a: &mut u8 = self.0.borrow_mut();
+                let ref_b: &u8 = rhs.0.borrow();
+
+                $op::$method(
+                    ref_a,
+                    *ref_b,
+                )
+            }
+        }
+    }
+}
+
+impl_bitfield_op_assign!(BitAndAssign::bitand_assign);
+impl_bitfield_op_assign!(BitOrAssign::bitor_assign);
+impl_bitfield_op_assign!(BitXorAssign::bitxor_assign);
+
+impl<T: Borrow<u8>> Not for IoTruthTable<T> {
+    type Output = IoTruthTable<u8>;
+
+    fn not(self) -> Self::Output {
+        let field: &u8 = self.0.borrow();
+        IoTruthTable(Not::not(*field))
+    }
+}
+
+// pretty-printing
 
 use std::fmt::{self, Debug, Formatter};
 
