@@ -12,6 +12,7 @@ pub type TruthTableArray = [[bool; 2]; 2];
 impl Index<usize> for IoTruthTable<TruthTableArray> {
     type Output = [bool; 2];
 
+    #[inline(always)]
     fn index(&self, index: usize) -> &Self::Output {
         &self.0[index]
     }
@@ -81,6 +82,10 @@ impl<T: Borrow<u8>> IoTruthTable<T> {
                 self.bitwise_lookup(true, true)
             ],
         ])
+    }
+
+    pub fn owned(&self) -> IoTruthTable<u8> {
+        IoTruthTable(*self.0.borrow())
     }
 }
 

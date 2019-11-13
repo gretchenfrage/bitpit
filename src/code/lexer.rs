@@ -7,6 +7,33 @@ use nom::IResult;
 use nom::error::{VerboseError, ParseError, convert_error};
 use nom::character::complete::anychar;
 
+pub fn lex<'a, E>(code: &'a str) -> Result<Vec<Token>, E>
+    where
+        E: ParseError<&'a str>, {
+
+    many0!(code, complete!(token))
+        .map_err(nom::Err::convert)
+        .map_err(|nom_error| match nom_error {
+            nom::Err::Error(e) => e,
+            nom::Err::Failure(e) => e,
+            nom::Err::Incomplete(_e) => unreachable!(),
+        })
+        .and_then(|(rem, vec)| {
+            if rem.is_empty() {
+                Ok(vec)
+            } else {
+                println!("rem = {:#?}", rem);
+                Err(E::from_error_kind(rem, nom::error::ErrorKind::Alt))
+            }
+        })
+
+}
+
+pub fn lex_verbose_err(code: &str) -> Result<Vec<Token>, String> {
+    lex::<VerboseError<_>>(code)
+        .map_err(|e| convert_error(code, e))
+}
+
 macro_rules! named_any_err {
     (
         $name:ident(&str) -> $output:ty,
@@ -200,30 +227,3 @@ named_any_err!(
         complete!( map!(whitespace, |_| Token::Whitespace) )
     )
 );
-
-pub fn lex<'a, E>(code: &'a str) -> Result<Vec<Token>, E>
-    where
-        E: ParseError<&'a str>, {
-
-    many0!(code, complete!(token))
-        .map_err(nom::Err::convert)
-        .map_err(|nom_error| match nom_error {
-            nom::Err::Error(e) => e,
-            nom::Err::Failure(e) => e,
-            nom::Err::Incomplete(_e) => unreachable!(),
-        })
-        .and_then(|(rem, vec)| {
-            if rem.is_empty() {
-                Ok(vec)
-            } else {
-                println!("rem = {:#?}", rem);
-                Err(E::from_error_kind(rem, nom::error::ErrorKind::Alt))
-            }
-        })
-
-}
-
-pub fn lex_verbose_err(code: &str) -> Result<Vec<Token>, String> {
-    lex::<VerboseError<_>>(code)
-        .map_err(|e| convert_error(code, e))
-}

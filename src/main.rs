@@ -9,6 +9,7 @@ use code::tokens::Token;
 use code::truthtable::IoTruthTable;
 
 fn main() {
+    /*
     let mut bitfield = IoTruthTable::yes_unconditional()
         .pack_bitfield();
 
@@ -21,8 +22,23 @@ fn main() {
 
     let mut b2 = IoTruthTable(&mut byte);
     b2 &= IoTruthTable::new_zeroed_bitfield();
+    b2.copy_from(!b2.owned());
 
     println!("{:#?}", b2);
+    */
+
+    let a = IoTruthTable::yes_unconditional().pack_bitfield();
+    let b = IoTruthTable::input_conditional().pack_bitfield();
+
+    println!("{:#?}", (a, b));
+
+    println!("{:#?}", a | b);
+
+    println!("{:#?}", a & b);
+
+    println!("{:#?}", a ^ b);
+
+    println!("{:#?}", !(a ^ b));
 
     /*
     let code = r##"
