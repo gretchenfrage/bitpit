@@ -27,6 +27,8 @@ fn main() {
     println!("{:#?}", b2);
     */
 
+    /*
+
     let a = IoTruthTable::yes_unconditional().pack_bitfield();
     let b = IoTruthTable::input_conditional().pack_bitfield();
 
@@ -39,8 +41,8 @@ fn main() {
     println!("{:#?}", a ^ b);
 
     println!("{:#?}", !(a ^ b));
+    */
 
-    /*
     let code = r##"
     b07afff: ^ y _ n = ~ I ( (( foo foo ^^^ __ "wow!" (( )) )) n * <ff >3 | O (( (( (((()))) )) )) )
     "##;
@@ -58,11 +60,17 @@ fn main() {
                 _ => true,
             });
 
+            let scopes = code::bytecode::compile::parse_scopes(vec).unwrap();
+
+
+            println!("{:#?}", scopes);
+
+            /*
 
             for (i, token) in vec.into_iter().enumerate() {
                 println!("{}: {:?}", i, token);
             }
+            */
         }
     }
-    */
 }
