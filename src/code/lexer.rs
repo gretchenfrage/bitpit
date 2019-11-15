@@ -1,5 +1,6 @@
 
 use super::tokens::*;
+use super::span::{self, Spanned, Span};
 
 use std::char;
 
@@ -7,7 +8,7 @@ use nom::IResult;
 use nom::error::{VerboseError, ParseError, convert_error};
 use nom::character::complete::anychar;
 
-pub fn lex<'a, E>(code: &'a str) -> Result<Vec<Token>, E>
+pub fn lex<'a, E>(code: &'a str) -> Result<Vec<Spanned<'a, Token>>, E>
     where
         E: ParseError<&'a str>, {
 
@@ -22,16 +23,45 @@ pub fn lex<'a, E>(code: &'a str) -> Result<Vec<Token>, E>
             if rem.is_empty() {
                 Ok(vec)
             } else {
-                println!("rem = {:#?}", rem);
                 Err(E::from_error_kind(rem, nom::error::ErrorKind::Alt))
             }
         })
 
 }
 
-pub fn lex_verbose_err(code: &str) -> Result<Vec<Token>, String> {
+pub fn lex_verbose_err(code: &str) -> Result<Vec<Spanned<Token>>, String> {
     lex::<VerboseError<_>>(code)
         .map_err(|e| convert_error(code, e))
+}
+
+macro_rules! spanned {
+    ($i:expr, $submac:ident!( $($args:tt)* )) => {{
+        let input = $i;
+        match $submac!(input, $($args)* ) {
+            Err(e) => Err(e),
+            Ok((rem, elem)) => {
+                let span = span::until(input, rem);
+                Ok((
+                    rem,
+                    Spanned(elem, span),
+                ))
+            },
+        }
+    //spanned!($i, |i| $submac!(i, $($args)*))
+    }};
+    ($i:expr, $f:expr) => {{
+        let input = $i;
+        match $f(input) {
+            Err(e) => Err(e),
+            Ok((rem, elem)) => {
+                let span = span::until(input, rem);
+                Ok((
+                    rem,
+                    Spanned(elem, span),
+                ))
+            },
+        }
+    }};
 }
 
 macro_rules! named_any_err {
@@ -50,8 +80,8 @@ macro_rules! named_any_err {
 }
 
 named_any_err!(
-    operator(&str) -> Operator,
-    map!(
+    operator(&str) -> Spanned<Operator>,
+    spanned!(map!(
         one_of!("&|^~=_"),
         |c: char| match c {
             '&' => Operator::Both,
@@ -62,33 +92,34 @@ named_any_err!(
             '_' => Operator::Neither,
             _ => unreachable!()
         }
-    )
+    ))
 );
 
 named_any_err!(
-    bit_literal(&str) -> BitLiteral,
-    map!(
+    bit_literal(&str) -> Spanned<BitLiteral>,
+    spanned!(map!(
         one_of!("yn"),
         |c: char| match c {
             'y' => BitLiteral::Yes,
             'n' => BitLiteral::No,
             _ => unreachable!()
         }
-    )
+    ))
 );
 
 named_any_err!(
-    io_literal(&str) -> IoLiteral,
-    map!(
+    io_literal(&str) -> Spanned<IoLiteral>,
+    spanned!(map!(
         one_of!("IO"),
         |c: char| match c {
             'I' => IoLiteral::Input,
             'O' => IoLiteral::Output,
             _ => unreachable!()
         }
-    )
+    ))
 );
 
+/// Panics if invalid.
 fn hex_str_to_u128(string: &str) -> u128 {
     let mut accum: u128 = 0;
     let mut scale: u128 = 1;
@@ -105,50 +136,55 @@ fn hex_str_to_u128(string: &str) -> u128 {
 }
 
 named_any_err!(
-    hex_u128(&str) -> u128,
-    map!(
+    hex_u128(&str) -> Spanned<u128>,
+    spanned!(map!(
         nom::character::complete::hex_digit1,
         hex_str_to_u128
-    )
+    ))
 );
 
 named_any_err!(
-    memory_read(&str) -> MemoryRead,
-    switch!(
+    memory_read(&str) -> Spanned<MemoryRead>,
+    spanned!(switch!(
         one_of!("*><"),
         '*' => value!(MemoryRead(0)) |
         '>' => map!(
             hex_u128,
-            |offset: u128| MemoryRead(offset as i128)
+            |offset: Spanned<u128>| MemoryRead(offset.0 as i128)
         ) |
         '<' => map!(
             hex_u128,
-            |offset: u128| MemoryRead(offset as i128 * -1)
+            |offset: Spanned<u128>| MemoryRead(offset.0 as i128 * -1)
         )
-    )
+    ))
 );
 
 named_any_err!(
-    parenthesis(&str) -> Parenthesis,
-    map!(
+    parenthesis(&str) -> Spanned<Parenthesis>,
+    spanned!(map!(
         one_of!("()"),
         |c: char| match c {
             '(' => Parenthesis::Open,
             ')' => Parenthesis::Close,
             _ => unreachable!()
         }
-    )
+    ))
 );
 
 named_any_err!(
-    colon(&str) -> (),
-    map!(
+    colon(&str) -> Spanned<()>,
+    spanned!(map!(
         char!(':'),
         |_| ()
-    )
+    ))
 );
 
-fn whitespace<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
+named_any_err!(
+    whitespace(&str) -> Spanned<()>,
+    spanned!(whitespace_nospan)
+);
+
+fn whitespace_nospan<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
     where
         E: ParseError<&'a str>, {
 
@@ -178,7 +214,12 @@ fn whitespace<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
     }
 }
 
-fn comment<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
+named_any_err!(
+    comment(&str) -> Spanned<()>,
+    spanned!(comment_nospan)
+);
+
+fn comment_nospan<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
     where
         E: ParseError<&'a str>, {
 
@@ -212,18 +253,20 @@ fn comment<'a, E>(input: &'a str) -> IResult<&'a str, (), E>
 }
 
 named_any_err!(
-    token(&str) -> Token,
+    token(&str) -> Spanned<Token>,
     alt!(
         // good for comment to be first
-        complete!( map!(comment, |_| Token::Comment) ) |
+        complete!( map!(comment, span::mapping(|_| Token::Comment)) ) |
 
-        complete!( map!(operator, Token::Operator) ) |
-        complete!( map!(bit_literal, Token::BitLiteral) ) |
-        complete!( map!(io_literal, Token::IoLiteral) ) |
-        complete!( map!(memory_read, Token::MemoryRead) ) |
-        complete!( map!(parenthesis, Token::Parenthesis) ) |
-        complete!( map!(hex_u128, |n| Token::ActivationPattern(ActivationPattern(n))) ) |
-        complete!( map!(colon, |_| Token::Colon) ) |
-        complete!( map!(whitespace, |_| Token::Whitespace) )
+        complete!( map!(operator, span::mapping(Token::Operator)) ) |
+        complete!( map!(bit_literal, span::mapping(Token::BitLiteral)) ) |
+        complete!( map!(io_literal, span::mapping(Token::IoLiteral)) ) |
+        complete!( map!(memory_read, span::mapping(Token::MemoryRead)) ) |
+        complete!( map!(parenthesis, span::mapping(Token::Parenthesis)) ) |
+        complete!( map!(hex_u128, span::mapping(
+                |n| Token::ActivationPattern(ActivationPattern(n))
+            )) ) |
+        complete!( map!(colon, span::mapping(|_| Token::Colon)) ) |
+        complete!( map!(whitespace, span::mapping(|_| Token::Whitespace)) )
     )
 );

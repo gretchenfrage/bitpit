@@ -6,6 +6,7 @@ pub mod memory;
 pub mod code;
 
 use code::tokens::Token;
+use code::span::*;
 use code::truthtable::IoTruthTable;
 
 fn main() {
@@ -54,7 +55,7 @@ fn main() {
         Ok(mut vec) => {
 
 
-            vec.retain(|token| match token {
+            vec.retain(|&Spanned(ref token, _)| match token {
                 &Token::Whitespace => false,
                 &Token::Comment => false,
                 _ => true,

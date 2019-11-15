@@ -1,5 +1,6 @@
 
 use crate::code::tokens::*;
+use crate::code::span::{self, Span, Spanned};
 
 #[derive(Debug)]
 pub struct Error {
@@ -22,25 +23,24 @@ pub enum ErrorKind {
 /// scoping. The actual Token variant should not contain a parenthesis
 /// token.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum TokenTree {
-    Token(Token),
-    ParenScope(Vec<TokenTree>),
+pub enum TokenTree<'a> {
+    Token(Spanned<'a, Token>),
+    ParenScope(Vec<TokenTree<'a>>),
 }
 
-pub fn parse_scopes<T>(tokens: T) -> Result<Vec<TokenTree>, Error>
-    where
-        T: IntoIterator<Item=Token> {
-
+pub fn parse_scopes<'a, T>(tokens: T) -> Result<Vec<TokenTree<'a>>, Error>
+    where T: IntoIterator<Item=Spanned<'a, Token>>
+{
     fn top<T>(vec: &mut Vec<T>) -> &mut T {
         let i = vec.len() - 1;
         &mut vec[i]
     }
 
-    let mut scope_stack: Vec<Vec<TokenTree>> = vec![Vec::new()];
+    let mut scope_stack: Vec<Vec<TokenTree<'a>>> = vec![Vec::new()];
     let mut paren_depth: usize = 0;
 
     for token in tokens {
-        match token {
+        match &token.0 {
             Token::Parenthesis(Parenthesis::Open) => {
                 // begin a new layer of scope
                 paren_depth += 1;
@@ -61,7 +61,7 @@ pub fn parse_scopes<T>(tokens: T) -> Result<Vec<TokenTree>, Error>
                     });
                 }
             },
-            token => {
+            _ => {
                 // simply add the token to the current scope
                 let tt = TokenTree::Token(token);
                 top(&mut scope_stack).push(tt);
