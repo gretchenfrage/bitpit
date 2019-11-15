@@ -63,8 +63,13 @@ fn main() {
 
             let scopes = code::bytecode::compile::parse_scopes(vec);
 
+            let scopes = scopes
+                .map_err(|e| println!("error: {:#?}", e))
+                .unwrap();
 
-            println!("{:#?}", scopes);
+
+            code::bytecode::compile::print_tt(&scopes, true);
+
 
             /*
 
