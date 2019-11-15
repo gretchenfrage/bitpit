@@ -61,7 +61,7 @@ fn main() {
                 _ => true,
             });
 
-            let scopes = code::bytecode::compile::parse_scopes(vec).unwrap();
+            let scopes = code::bytecode::compile::parse_scopes(vec);
 
 
             println!("{:#?}", scopes);

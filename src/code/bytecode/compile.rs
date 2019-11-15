@@ -2,19 +2,14 @@
 use crate::code::tokens::*;
 use crate::code::span::{self, Span, Spanned};
 
-#[derive(Debug)]
-pub struct Error {
+#[derive(Debug, Clone)]
+pub struct Error<'a> {
     pub message: String,
-    //pub location: ErrorLocation,
+    pub location: Span<'a>,
     pub kind: ErrorKind,
 }
 
-#[derive(Debug)]
-pub enum ErrorLocation {
-    // unimplemented
-}
-
-#[derive(Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum ErrorKind {
     UnbalancedParenthesis,
 }
@@ -28,7 +23,7 @@ pub enum TokenTree<'a> {
     ParenScope(Vec<TokenTree<'a>>),
 }
 
-pub fn parse_scopes<'a, T>(tokens: T) -> Result<Vec<TokenTree<'a>>, Error>
+pub fn parse_scopes<'a, T>(tokens: T) -> Result<Vec<TokenTree<'a>>, Error<'a>>
     where T: IntoIterator<Item=Spanned<'a, Token>>
 {
     fn top<T>(vec: &mut Vec<T>) -> &mut T {
@@ -57,6 +52,7 @@ pub fn parse_scopes<'a, T>(tokens: T) -> Result<Vec<TokenTree<'a>>, Error>
                 } else {
                     return Err(Error {
                         message: format!("unmatched close parenthesis"),
+                        location: token.1,
                         kind: ErrorKind::UnbalancedParenthesis,
                     });
                 }
@@ -73,6 +69,7 @@ pub fn parse_scopes<'a, T>(tokens: T) -> Result<Vec<TokenTree<'a>>, Error>
     if paren_depth > 0 {
         return Err(Error {
             message: format!("{} unclosed parenthesis", paren_depth),
+            location: Span::None,
             kind: ErrorKind::UnbalancedParenthesis,
         });
     }
