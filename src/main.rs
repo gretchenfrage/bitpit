@@ -68,7 +68,12 @@ fn main() {
                 .unwrap();
 
 
-            code::bytecode::compile::print_tt(&scopes, true);
+            code::bytecode::compile::print_tt(&scopes, false);
+
+            let parts = code::bytecode::compile::program_parts(&scopes)
+                .map_err(|e| println!("error: {:#?}", e))
+                .unwrap();
+            println!("{:#?}", parts);
 
 
             /*
