@@ -77,14 +77,14 @@ macro_rules! token_to_variants {
 }
 
 token_to_variants! {
-    to_operator -> Operator(_);
-    to_bit_literal -> BitLiteral(_);
-    to_io_literal -> IoLiteral(_);
-    to_memory_read -> MemoryRead(_);
-    to_parenthesis -> Parenthesis(_);
+    to_operator           -> Operator(_);
+    to_bit_literal        -> BitLiteral(_);
+    to_io_literal         -> IoLiteral(_);
+    to_memory_read        -> MemoryRead(_);
+    to_parenthesis        -> Parenthesis(_);
     to_activation_pattern -> ActivationPattern(_);
 
-    to_colon -> () if Colon;
-    to_whitespace -> () if Whitespace;
-    to_comment -> () if Comment;
+    to_colon              -> () if Colon;
+    to_whitespace         -> () if Whitespace;
+    to_comment            -> () if Comment;
 }

@@ -202,6 +202,6 @@ pub fn print_tt(
             }
 
         }
-        // if that layer was exausted, then it will not be re-inserted
+        // if that layer was exhausted, then it will not be re-inserted
     }
 }

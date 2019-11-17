@@ -47,7 +47,6 @@ macro_rules! spanned {
                 ))
             },
         }
-    //spanned!($i, |i| $submac!(i, $($args)*))
     }};
     ($i:expr, $f:expr) => {{
         let input = $i;
