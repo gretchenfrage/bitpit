@@ -8,6 +8,7 @@ pub mod code;
 use code::tokens::Token;
 use code::span::*;
 use code::truthtable::IoTruthTable;
+use code::bytecode::compile::{self, ProgramParts};
 
 fn main() {
     /*
@@ -44,9 +45,56 @@ fn main() {
     println!("{:#?}", !(a ^ b));
     */
 
-    let code = r##"
-    b07afff: ^ y _ n = ~ I ( (( foo foo ^^^ __ "wow!" (( )) )) n * <ff >3 | O (( (( (((()))) )) )) )
-    "##;
+    let code = include_str!("code.bitpit");
+
+    macro_rules! unwrap {
+        ($e:expr) => {match $e {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("{:#?}", e);
+                std::process::exit(1);
+            },
+        }}
+    }
+
+    let tokens = code::lexer::lex_verbose_err(code);
+    let mut tokens = unwrap!(tokens);
+    println!("tokens:");
+    for &Spanned(t, s) in &tokens {
+        println!("- {:?}", t);
+    }
+    println!();
+
+    tokens.retain(|&Spanned(ref token, _)| match token {
+        &Token::Whitespace => false,
+        &Token::Comment => false,
+        _ => true,
+    });
+
+    let tt = compile::parse_scopes(tokens.iter().cloned());
+    let tt = unwrap!(tt);
+    println!("token tree:");
+    compile::print_tt(&tt, false);
+    println!();
+
+    let parts = compile::program_parts(&tt);
+    let parts = unwrap!(parts);
+    println!("program parts:");
+    println!("{:?}", parts);
+    println!();
+
+    let expressions = compile::syntax_to_expression(&parts.prefix_rule);
+    let expressions = unwrap!(expressions);
+
+    for (i, v) in expressions.iter().enumerate() {
+        println!("expr #{}", i);
+        for &Spanned(i, s) in v {
+            println!("- {:?}", i);
+        }
+        println!();
+    }
+
+    /*
 
     let result = code::lexer::lex_verbose_err(code);
 
@@ -73,7 +121,14 @@ fn main() {
             let parts = code::bytecode::compile::program_parts(&scopes)
                 .map_err(|e| println!("error: {:#?}", e))
                 .unwrap();
-            println!("{:#?}", parts);
+            //println!("{:#?}", parts);
+
+            let codes = code::bytecode::compile::syntax_to_expression(&parts.prefix_rule)
+                .map_err(|e| println!("error: {:#?}", e))
+                .unwrap();
+
+            std::dbg!(codes.len());
+            //\println!("{:#?}", codes);
 
 
             /*
@@ -84,4 +139,5 @@ fn main() {
             */
         }
     }
+    */
 }

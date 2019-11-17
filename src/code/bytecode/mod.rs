@@ -19,7 +19,7 @@ pub enum Instr {
 /// Pushing values onto stack.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum PushInstr {
-    Push(IoTruthTable<TruthTableArray>),
+    Push(IoTruthTable<u8>),
     ReadThenPush { offset: i128 },
 }
 
@@ -48,5 +48,36 @@ impl OpInstr {
 
             Not       => 1,
         }
+    }
+}
+
+macro_rules! enum_from_samey {
+    (
+    ($to:path) from ($from:path) {
+        $(
+        $variant:ident
+        ),* $(,)?
+    }
+    ) => {
+        impl From<$from> for $to {
+            fn from(from: $from) -> $to {
+                match from {
+                    $(
+                    <$from>::$variant => <$to>::$variant,
+                    )*
+                }
+            }
+        }
+    }
+}
+
+enum_from_samey! {
+    (OpInstr) from (crate::code::tokens::Operator) {
+        Both,
+        Either,
+        Different,
+        Not,
+        Same,
+        Neither,
     }
 }

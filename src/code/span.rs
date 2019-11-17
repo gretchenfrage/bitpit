@@ -81,3 +81,38 @@ pub fn between<'a>(span0: Span<'a>, span1: Span<'a>) -> Span<'a> {
         .map(|(min, max)| Span::AddrRange(min, max))
         .unwrap_or(Span::None)
 }
+
+pub trait HasSpan<'a> {
+    fn span(&self) -> Span<'a>;
+}
+
+impl<'a> HasSpan<'a> for Span<'a> {
+    fn span(&self) -> Span<'a> {
+        let &span = self;
+        span
+    }
+}
+
+impl<'a, T> HasSpan<'a> for Spanned<'a, T> {
+    fn span(&self) -> Span<'a> {
+        let &Spanned(_, span) = self;
+        span
+    }
+}
+
+impl<'a, 'r, T: HasSpan<'a>> HasSpan<'a> for &'r T {
+    fn span(&self) -> Span<'a> {
+        T::span(*self)
+    }
+}
+
+pub fn merge_all<'a, T, I>(spanned: I) -> Span<'a>
+    where I: IntoIterator<Item=T>,
+          T: HasSpan<'a>,
+{
+    let mut broad = Span::None;
+    for elem in spanned {
+        broad = between(broad, elem.span());
+    }
+    broad
+}

@@ -1,6 +1,6 @@
 
 use super::tokens::*;
-use super::span::{self, Spanned, Span};
+use super::span::{self, Spanned};
 
 use std::char;
 
