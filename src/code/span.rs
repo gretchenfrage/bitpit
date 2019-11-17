@@ -30,7 +30,7 @@ pub fn until<'a>(a: &'a str, b: &'a str) -> Span<'a> {
 
     let delta: usize = b_addr - a_addr;
 
-    if (delta + 1) > a.len() {
+    if delta > a.len() {
         return Span::None;
     }
 

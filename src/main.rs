@@ -61,7 +61,7 @@ fn main() {
     let mut tokens = unwrap!(tokens);
     println!("tokens:");
     for &Spanned(t, s) in &tokens {
-        println!("- {:?}", t);
+        println!("- {:?}", s);
     }
     println!();
 
@@ -74,7 +74,7 @@ fn main() {
     let tt = compile::parse_scopes(tokens.iter().cloned());
     let tt = unwrap!(tt);
     println!("token tree:");
-    compile::print_tt(&tt, false);
+    compile::print_tt(&tt, true);
     println!();
 
     let parts = compile::program_parts(&tt);
@@ -89,7 +89,7 @@ fn main() {
     for (i, v) in expressions.iter().enumerate() {
         println!("expr #{}", i);
         for &Spanned(i, s) in v {
-            println!("- {:?}", i);
+            println!("- {:?}", s);
         }
         println!();
     }
