@@ -71,19 +71,19 @@ fn main() {
         _ => true,
     });
 
-    let tt = compile::parse_scopes(tokens.iter().cloned());
+    let tt = compile::inner::parse_scopes(tokens.iter().cloned());
     let tt = unwrap!(tt);
     println!("token tree:");
-    compile::print_tt(&tt, true);
+    compile::debug::print_tt(&tt, true);
     println!();
 
-    let parts = compile::program_parts(&tt);
+    let parts = compile::inner::program_parts(&tt);
     let parts = unwrap!(parts);
     println!("program parts:");
     println!("{:?}", parts);
     println!();
 
-    let expressions = compile::syntax_to_expression(&parts.prefix_rule);
+    let expressions = compile::inner::syntax_to_expression(&parts.prefix_rule);
     let expressions = unwrap!(expressions);
 
     for (i, v) in expressions.iter().enumerate() {

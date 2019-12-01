@@ -1,64 +1,14 @@
 
+use super::{
+    ProgramParts, TokenTree, ExprSubprogram,
+    error::{Error, ErrorKind}
+};
 use crate::code::span::{self, Span, Spanned, HasSpan};
 use crate::code::tokens::*;
 use crate::code::bytecode::*;
 use crate::code::truthtable::IoTruthTable;
 
-#[derive(Debug, Clone)]
-pub struct Error<'a> {
-    pub message: String,
-    pub location: Span<'a>,
-    pub kind: ErrorKind,
-    pub next_error: Option<Box<Error<'a>>>,
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum ErrorKind {
-    UnbalancedParenthesis,
-    WrongTokenType,
-    TooManyExprsInParenthesis,
-    NotEnoughOperands,
-}
-
-impl<'a> Error<'a> {
-    pub fn chain<I: IntoIterator<Item=Self>>(iter: I) -> Option<Self> {
-        let mut iter = iter.into_iter();
-
-        let mut head: Error<'a> = match iter.next() {
-            Some(head) => head,
-            None => return None,
-        };
-
-        {
-            let mut tail: &mut Option<Box<Error<'a>>> = &mut head.next_error;
-            for error in iter {
-                *tail = Some(Box::new(error));
-                tail = &mut tail.as_mut().unwrap().next_error;
-            }
-        }
-
-        Some(head)
-    }
-}
-
-/// A representation of tokens which can represent recursive parenthesis
-/// scoping. The actual Token variant should not contain a parenthesis
-/// token.
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum TokenTree<'a> {
-    Token(Spanned<'a, Token>),
-    ParenScope(Vec<TokenTree<'a>>),
-}
-
-impl<'a> HasSpan<'a> for TokenTree<'a> {
-    fn span(&self) -> Span<'a> {
-        match self {
-            &TokenTree::Token(Spanned(_, span)) => span,
-            &TokenTree::ParenScope(ref vec) => span::merge_all(vec),
-        }
-    }
-}
-
+/// Parse a flat sequence of tokens into a sequence of token trees.
 pub fn parse_scopes<'a, T>(tokens: T) -> Result<Vec<TokenTree<'a>>, Error<'a>>
     where T: IntoIterator<Item=Spanned<'a, Token>>
 {
@@ -117,14 +67,7 @@ pub fn parse_scopes<'a, T>(tokens: T) -> Result<Vec<TokenTree<'a>>, Error<'a>>
     return Ok(scope_stack.pop().unwrap());
 }
 
-/// The program, split into its parts.
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct ProgramParts<'a> {
-    pub activation: Spanned<'a, ActivationPattern>,
-    /// Behavior rule as a prefix-notation token tree.
-    pub prefix_rule: Vec<TokenTree<'a>>,
-}
-
+/// Split syntax into parts of the program.
 pub fn program_parts<'a>(mut tokens: &[TokenTree<'a>]) -> Result<ProgramParts<'a>, Error<'a>> {
 
     fn take_variant<'a, V>(
@@ -183,68 +126,7 @@ pub fn program_parts<'a>(mut tokens: &[TokenTree<'a>]) -> Result<ProgramParts<'a
     Ok(program_parts)
 }
 
-enum ExprToken<'a, 's> {
-    Literal(Spanned<'a, PushInstr>),
-    Op(Spanned<'a, OpInstr>),
-    Scope(&'s [TokenTree<'a>]),
-}
-
-fn tt_to_expr_token<'a, 's>(token: &'s TokenTree<'a>) -> Result<ExprToken<'a, 's>, Error<'a>> {
-    match token {
-
-        &TokenTree::Token(Spanned(token, span)) => {
-            match token {
-
-                Token::Operator(inner) => {
-                    let op = OpInstr::from(inner);
-                    Ok(ExprToken::Op(Spanned(op, span)))
-                },
-
-                Token::BitLiteral(inner) => {
-                    let table = match inner {
-                        BitLiteral::Yes => IoTruthTable::yes_unconditional(),
-                        BitLiteral::No => IoTruthTable::no_unconditional(),
-                    };
-                    let push = PushInstr::Push(table.pack_bitfield());
-                    Ok(ExprToken::Literal(Spanned(push, span)))
-                },
-
-                Token::IoLiteral(inner) => {
-                    let table = match inner {
-                        IoLiteral::Input => IoTruthTable::input_conditional(),
-                        IoLiteral::Output => IoTruthTable::output_conditional(),
-                    };
-                    let push = PushInstr::Push(table.pack_bitfield());
-                    Ok(ExprToken::Literal(Spanned(push, span)))
-                },
-
-                Token::MemoryRead(MemoryRead(offset)) => {
-                    let push = PushInstr::ReadThenPush { offset };
-                    Ok(ExprToken::Literal(Spanned(push, span)))
-                },
-
-                _ => {
-                    Err(Error {
-                        message: format!("required some expression token, found {:?}", token),
-                        location: span,
-                        kind: ErrorKind::WrongTokenType,
-                        next_error: None,
-                    })
-                },
-
-            }
-        }
-
-        &TokenTree::ParenScope(ref vec) => {
-            Ok(ExprToken::Scope(Vec::as_slice(vec)))
-        }
-
-    }
-}
-
-/// Bytecode instructions which independently produce a single expression.
-pub type ExprSubprogram<'a> = Vec<Spanned<'a, Instr>>;
-
+/// Convert syntax for an expression into bytecode.
 pub fn syntax_to_expression<'a>(
     syntax: &[TokenTree<'a>]
 ) -> Result<Vec<ExprSubprogram<'a>>, Error<'a>> {
@@ -351,47 +233,64 @@ pub fn syntax_to_expression<'a>(
     Ok(expr_stack)
 }
 
-pub fn print_tt(
-    tt: &[TokenTree],
-    print_spans: bool,
-) {
-    // stack of layers, starts with base
-    let mut stack: Vec<&[TokenTree]> = vec![tt];
+/// Token within an expression, categorized between operands and operators.
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+enum ExprToken<'a, 's> {
+    Literal(Spanned<'a, PushInstr>),
+    Op(Spanned<'a, OpInstr>),
+    Scope(&'s [TokenTree<'a>]),
+}
 
-    // iterate until exhausted
-    while let Some(layer) = stack.pop() {
-        // if there is an element, handle and re-insert
-        if let Some(first) = layer.get(0) {
-            let rest = &layer[1..];
+/// Helper method for syntax_to_expression.
+fn tt_to_expr_token<'a, 's>(token: &'s TokenTree<'a>) -> Result<ExprToken<'a, 's>, Error<'a>> {
+    match token {
 
-            match first {
-                &TokenTree::Token(Spanned(token, span)) => {
-                    // if we hit a token, print it
-                    for _ in 0..stack.len() {
-                        print!("  ");
-                    }
-                    print!("- ");
-                    println!("{:?}", token);
+        &TokenTree::Token(Spanned(token, span)) => {
+            match token {
 
-                    if print_spans {
-                        for _ in 0..stack.len() {
-                            print!("  ");
-                        }
-                        println!("  {:?}", span)
-                    }
-
-                    // the push back the remainder
-                    stack.push(rest);
+                Token::Operator(inner) => {
+                    let op = OpInstr::from(inner);
+                    Ok(ExprToken::Op(Spanned(op, span)))
                 },
 
-                &TokenTree::ParenScope(ref sublayer) => {
-                    // if we hit a sub-scope, push it OVER the remainder
-                    stack.push(rest);
-                    stack.push(Vec::as_slice(sublayer));
-                }
-            }
+                Token::BitLiteral(inner) => {
+                    let table = match inner {
+                        BitLiteral::Yes => IoTruthTable::yes_unconditional(),
+                        BitLiteral::No => IoTruthTable::no_unconditional(),
+                    };
+                    let push = PushInstr::Push(table.pack_bitfield());
+                    Ok(ExprToken::Literal(Spanned(push, span)))
+                },
 
+                Token::IoLiteral(inner) => {
+                    let table = match inner {
+                        IoLiteral::Input => IoTruthTable::input_conditional(),
+                        IoLiteral::Output => IoTruthTable::output_conditional(),
+                    };
+                    let push = PushInstr::Push(table.pack_bitfield());
+                    Ok(ExprToken::Literal(Spanned(push, span)))
+                },
+
+                Token::MemoryRead(MemoryRead(offset)) => {
+                    let push = PushInstr::ReadThenPush { offset };
+                    Ok(ExprToken::Literal(Spanned(push, span)))
+                },
+
+                _ => {
+                    Err(Error {
+                        message: format!("required some expression token, found {:?}", token),
+                        location: span,
+                        kind: ErrorKind::WrongTokenType,
+                        next_error: None,
+                    })
+                },
+
+            }
         }
-        // if that layer was exhausted, then it will not be re-inserted
+
+        &TokenTree::ParenScope(ref vec) => {
+            Ok(ExprToken::Scope(Vec::as_slice(vec)))
+        }
+
     }
 }

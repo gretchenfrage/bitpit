@@ -1,0 +1,421 @@
+<html>
+<head>
+  <style>
+
+    body {
+      max-width: 8in;
+      margin: auto;
+      padding: 0.2in;
+    }
+
+    .header {
+      text-align: center;
+    }
+
+    .inner {
+      max-width: 6in;
+      margin: 0.5in auto;
+      border: 1px solid #00000022;
+      padding: 0.2in;
+    }
+
+    .inner h4 {
+      text-align: center;
+      margin-bottom: 0.4in;
+      margin-top: 0;
+      padding: 0 !important;
+    }
+
+    .inner pre {
+      padding: 0.1in;
+      margin: 0;
+    }
+
+    .darken {
+      background-color: #EEEEEE;
+    }
+
+    h4 {
+      text-align: center;
+      margin-top: 0.8in;
+    }
+
+    table, th, td {
+      border: 1px solid #111111;
+    }
+
+    th, td {
+      min-width: 2in;
+      padding: 4px 4px;
+    }
+
+    th.short, td.short {
+      min-width: 0.5in !important;
+    }
+
+    pre.inline {
+      display: inline-block;
+      padding: 1px;
+      border: 1px solid #888888;
+      margin: 1px 0;
+    }
+
+    td {
+      overflow-style: auto;
+    }
+
+  </style>
+</head>
+<body>
+
+<div>
+  <h3 class="header">Bitpit</h3>
+
+  <p>
+    An esolang where you create a turing-complete cellular automaton with a
+    non-turing-complete boolean equation.
+  </p>
+
+  <ul>
+    <li>
+      <p>
+        A bitpit program lives in an array of bits which is infinite in both directions. The
+        memory does not expose absolute memory addresses, and can only be addressed
+        relatively to some other address.
+      </p>
+    </li>
+
+    <li>
+      <p>
+        A bitpit program contains an <i>activation pattern</i>, a sequence of yes
+        and no bits which is loaded into memory when it first runs. All other bits in memory
+        start as no.
+      </p>
+    </li>
+
+    <li>
+      <p>
+        The other part of a bitpit program is its <i>behavior rule.</i> This is a boolean
+        formula for computing the value of a bit, based on the previous state of memory.
+      </p>
+    </li>
+
+    <li>
+      <p>
+        Every <i>tick</i>, the bitpit runtime re-computes the values of each bit in
+        parallel, which may trigger input and/or output.
+      </p>
+    </li>
+  </ul>
+</div>
+
+<div class="inner">
+  <h4>Example bitpit program</h4>
+
+  <pre><div class="darken">b07afff: ^ y _ n = ~ I ^ ^ ^ ^ n * &lt;ff &gt;3 | O O</div>^     ^  ^                                    ^
+|     |  |                                    |
+|     |  |____________________________________|
+|_____|                                   |
+   |                                      ^----the behavior rule
+   ^----the activation pattern</pre>
+</div>
+
+<div>
+  <h4>Syntax</h4>
+
+  <ul>
+    <li>
+      A program looks like
+
+      <pre class="darken">[ACTIVATION PATTERN] : [BEHAVIOR RULE]</pre>
+
+      <p>
+        The activation pattern is a hexadecimal bit pattern. The behavior rule is the
+        expression for the value of each bit of memory, based on the previous state of
+        memory. Bits are the only data type, which have two possible values: <i>yes</i>
+        and <i>no</i>.
+      </p>
+    </li>
+    <li>
+      <p>
+        The program uses prefix notation, wherein the operator goes before its operands.
+      </p>
+
+      <table>
+        <th>Infix Notation</th>
+        <th>Prefix Notation</th>
+        <th>Prefix with Parenthesis</th>
+        <tr>
+          <td>1 + 2</td>
+          <td>+ 1 2</td>
+          <td>(+ 1 2)</td>
+        </tr>
+        <tr>
+          <td>10 + 20 + 30</td>
+          <td>+ + 10 20 30</td>
+          <td>(+ (+ 10 20) 30)</td>
+        </tr>
+        <tr>
+          <td>((10 + 20) * 30)</td>
+          <td>* + 10 20 30</td>
+          <td>(* (+ 10 20) 30)</td>
+        </tr>
+        <tr>
+          <td>(10 + (20 * 30))</td>
+          <td>+ 10 * 20 30</td>
+          <td>(+ 10 (* 20 30))</td>
+        </tr>
+      </table>
+
+      <p>
+        This removes any order-of-evaluation ambiguity, and the concept of order-of-operations
+        entirely. Consequentially, programs do not need parenthesis, but may still use
+        parenthesis for readability, or to verify that the program is formed correctly.
+      </p>
+    </li>
+    <li>
+      <p>
+        List of operators:
+      </p>
+      <table>
+        <th class="short">Syntax</th>
+        <th>Name</th>
+        <th>Does</th>
+        <th class="short">Arity</th>
+        <tr>
+          <td class="short darken">
+            <pre>&</pre>
+          </td>
+          <td>Both</td>
+          <td>AND, true if both are true</td>
+          <td class="short">2</td>
+        </tr>
+        <tr>
+          <td class="short darken">
+            <pre>|</pre>
+          </td>
+          <td>Either</td>
+          <td>OR, true if either are true</td>
+          <td class="short">2</td>
+        </tr>
+        <tr>
+          <td class="short darken">
+            <pre>^</pre>
+          </td>
+          <td>Different</td>
+          <td>XOR, true if bits unequal</td>
+          <td class="short">2</td>
+        </tr>
+        <tr>
+          <td class="short darken">
+            <pre>=</pre>
+          </td>
+          <td>Same</td>
+          <td>EQUALS, true if bits equal</td>
+          <td class="short">2</td>
+        </tr>
+        <tr>
+          <td class="short darken">
+            <pre>_</pre>
+          </td>
+          <td>Neither</td>
+          <td>true if both bits are false</td>
+          <td class="short">2</td>
+        </tr>
+        <tr>
+          <td class="short darken">
+            <pre>~</pre>
+          </td>
+          <td>Not</td>
+          <td>NEGATION, true if false</td>
+          <td class="short">1</td>
+        </tr>
+      </table>
+    </li>
+    <li>
+      Comments are started with
+      <pre class="darken inline">((</pre>
+      ,
+      and ended with
+      <pre class="darken inline">))</pre>
+      .
+      <pre class="darken">b07afff: ^ y _ n = ~ I ^ ^ (( i'm a comment! )) ^ ^ n * &lt;ff &gt;3 | O O</pre>
+    </li>
+    <li>
+      <p>
+        List of value "literals":
+      </p>
+      <table>
+        <th>Syntax</th>
+        <th>Description</th>
+        <th>Example</th>
+        <tr>
+          <td>y (lowercase)</td>
+          <td><i>Yes</i> value, aka. <i>true</i></td>
+          <td class="darken">
+            <pre>y</pre>
+          </td>
+        </tr>
+        <tr>
+          <td>n (lowercase)</td>
+          <td><i>No</i> value, aka. <i>false</i></td>
+          <td class="darken">
+            <pre>n</pre>
+          </td>
+        </tr>
+        <tr>
+          <td>*</td>
+          <td>Memory read at current address</td>
+          <td class="darken">
+            <pre>*</pre>
+          </td>
+        </tr>
+        <tr>
+          <td>&gt;[HEX NUMBER]</td>
+          <td>Memory read, some number of bits to the right of current address</td>
+          <td class="darken">
+            <pre>&gt;ff03b66eee22342</pre>
+          </td>
+        </tr>
+        <tr>
+          <td>&lt;[HEX NUMBER]</td>
+          <td>Memory read, some number of bits to the left of current address</td>
+          <td class="darken">
+            <pre>&lt;2</pre>
+          </td>
+        </tr>
+        <tr>
+          <td>I (uppercase)</td>
+          <td>Input a bit (see section)</td>
+          <td class="darken">
+            <pre>I</pre>
+          </td>
+        </tr>
+        <tr>
+          <td>O (uppercase)</td>
+          <td>Output a bit (see section)</td>
+          <td class="darken">
+            <pre>O</pre>
+          </td>
+        </tr>
+      </table>
+    </li>
+  </ul>
+</div>
+
+<div>
+  <h4>Input and Output</h4>
+  <p>
+    Bitpit has an unconventional way of doing I/O.
+  </p>
+  <ul>
+    <li>
+      The stdin and stdout are abstracted into streams of bits, not bytes.
+    </li>
+    <li>
+      The
+      <pre class="inline darker">I</pre>
+      literal triggers a read from the stdin,
+      and evaluates to the bit which was read.
+    </li>
+    <li>
+      The
+      <pre class="inline darker">O</pre>
+      literal triggers a write to the stdout from
+      the value of the current bit, and always evaluates to <i>yes</i>.
+    </li>
+    <li>
+      <b>
+        I/O will only actually occur if the final value of the expression actually
+        changes based on the result of the I/O expression.
+      </b>
+    </li>
+  </ul>
+  <p>
+    That last bit is the unconventional part, and the way bitpit allows conditional
+    input/output from these boolean expressions which don't have explicit branching.
+  </p>
+  <ul>
+    <li>
+      A single bit can only input and/or output up to once per tick. There may be
+      several
+      <pre class="inline darker">I</pre>
+      or
+      <pre class="inline darker">O</pre>
+      tokens within the rule, but they will simply reference the result of the same
+      I/O operation.
+    </li>
+    <li>
+      If several bits in the infinite memory array make a I/O operation in the same
+      frame, they do so left-to-right.
+    </li>
+    <li>
+      In a frame, first all output operations are performed, then all input operations
+      are performed.
+    </li>
+  </ul>
+  <p>
+    The implementation actually evaluates the value of each bit speculatively, with a
+    truth table of what the bit would evaluate to if the input and output values
+    of the bit were <i>yes</i> or <i>no</i>. It uses the resultant truth table to
+    determine whether the result is dependent on that value, and whether it should
+    actually trigger I/O of a bit.
+  </p>
+</div>
+
+<div>
+  <h4>Waking up Memory</h4>
+  <p>
+    A bitpit interpreter clearly cannot actually compute the value of an infinite number of bits
+    each frame. Instead, bitpit has the concept of <i>waking up</i> bits in memory, and
+    putting them back to sleep.
+  </p>
+  <ul>
+    <li>
+      Each frame, only the bits which are awake are evaluated and have the chance to
+      perform I/O.
+    </li>
+    <li>
+      At program start, only the <i>yes</i> bits are awake.
+    </li>
+    <li>
+      A bit is said to be <i>listening to</i> a set of other bits, which are its
+      address plus the set of relative memory accesses in the source code.
+    </li>
+    <li>
+      Every frame, the interpreter will wake up any bit which is <i>listening to</i> a
+      bit that is currently awake.
+    </li>
+    <li>
+      If a bit does not change its state and does not perform I/O during a frame, the
+      interpreter puts it back to sleep.
+    </li>
+  </ul>
+  <p>
+    This behavior should not be noticeable if a program is <i>stable</i>, meaning that,
+    if all of the bit's memory accesses yield <i>no</i>, the behavior rule will
+    evaluate to <i>no</i>, and not perform I/O.
+  </p>
+  <ul>
+    <li>
+      A stable program, which creates a static memory pattern:
+      <pre class="darken">F: *</pre>
+    </li>
+    <li>
+      A stable program, which creates a glider:
+      <pre class="darken">1: <1</pre>
+    </li>
+    <li>
+      A stable program, which outputs a stream of 1 bits:
+      <pre class="darken">1: & * O</pre>
+    </li>
+    <li>
+      An unstable program:
+      <pre class="darken">1: ~ *</pre>
+    </li>
+  </ul>
+
+</div>
+
+</body>
+</html>
