@@ -1,4 +1,6 @@
 
+use std::ops::Deref;
+
 /// Source code location, for better error reporting.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum Span<'a> {
@@ -17,6 +19,10 @@ impl<'a, T> Spanned<'a, T> {
         let Spanned(a, span) = self;
         let b = function(a);
         Spanned(b, span)
+    }
+
+    pub fn into_inner(self) -> T {
+        self.0
     }
 }
 
@@ -100,9 +106,26 @@ impl<'a, T> HasSpan<'a> for Spanned<'a, T> {
     }
 }
 
+/*
 impl<'a, 'r, T: HasSpan<'a>> HasSpan<'a> for &'r T {
     fn span(&self) -> Span<'a> {
         T::span(*self)
+    }
+}
+*/
+
+impl<'a, T: HasSpan<'a>> HasSpan<'a> for [T] {
+    fn span(&self) -> Span<'a> {
+        merge_all(self)
+    }
+}
+
+impl<'a, T> HasSpan<'a> for T
+    where T: Deref,
+          <T as Deref>::Target: HasSpan<'a>
+{
+    fn span(&self) -> Span<'a> {
+        <T as Deref>::Target::span(Deref::deref(self))
     }
 }
 

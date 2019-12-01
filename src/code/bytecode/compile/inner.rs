@@ -68,7 +68,10 @@ pub fn parse_scopes<'a, T>(tokens: T) -> Result<Vec<TokenTree<'a>>, Error<'a>>
 }
 
 /// Split syntax into parts of the program.
-pub fn program_parts<'a>(mut tokens: &[TokenTree<'a>]) -> Result<ProgramParts<'a>, Error<'a>> {
+pub fn program_parts<'a, A>(tokens: A) -> Result<ProgramParts<'a>, Error<'a>>
+    where A: AsRef<[TokenTree<'a>]>
+{
+    let mut tokens = tokens.as_ref();
 
     fn take_variant<'a, V>(
         tokens: &mut &[TokenTree<'a>],
@@ -127,9 +130,12 @@ pub fn program_parts<'a>(mut tokens: &[TokenTree<'a>]) -> Result<ProgramParts<'a
 }
 
 /// Convert syntax for an expression into bytecode.
-pub fn syntax_to_expression<'a>(
-    syntax: &[TokenTree<'a>]
-) -> Result<Vec<ExprSubprogram<'a>>, Error<'a>> {
+pub fn syntax_to_expression<'a, A>(
+    syntax: A
+) -> Result<Vec<ExprSubprogram<'a>>, Error<'a>>
+    where A: AsRef<[TokenTree<'a>]>
+{
+    let syntax = syntax.as_ref();
 
     #[derive(Debug, Clone)]
     struct Prefix {

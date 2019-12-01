@@ -4,6 +4,7 @@ pub mod compile;
 use super::truthtable::*;
 
 /// Fully formed runnable bytecode program.
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct CompiledProgram {
     pub activation: Vec<bool>,
     pub instrs: Vec<Instr>,

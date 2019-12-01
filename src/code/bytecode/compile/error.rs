@@ -17,7 +17,10 @@ pub enum ErrorKind {
     UnbalancedParenthesis,
     WrongTokenType,
     TooManyExprsInParenthesis,
+    TooManyExprsInProgram,
     NotEnoughOperands,
+
+    Lexer,
 }
 
 impl<'a> Error<'a> {
